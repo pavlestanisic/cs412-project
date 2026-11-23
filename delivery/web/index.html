@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Food Delivery</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 16px;
+      background: #f5f6f8;
+      color: #222;
+    }
+
+    section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+    }
+
+    input, select, button {
+      padding: 10px;
+      font: inherit;
+    }
+
+    input, select {
+      box-sizing: border-box;
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    button {
+      margin: 8px 6px 0 0;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    #message {
+      min-height: 24px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Food Delivery</h1>
+  <p id="message" role="status" aria-live="polite"></p>
+
+  <section>
+    <h2>Place an order</h2>
+
+    <form id="order-form">
+      <label for="customer">Customer</label>
+      <select id="customer" required></select>
+
+      <label for="restaurant">Restaurant</label>
+      <select id="restaurant" required></select>
+
+      <p id="menu"></p>
+
+      <label for="items">Items</label>
+      <input id="items" placeholder="Pizza*2, Cola" required>
+
+      <label for="delivery">Delivery</label>
+      <select id="delivery">
+        <option value="standard">Standard</option>
+        <option value="express">Express</option>
+      </select>
+
+      <button type="submit">Place order</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Orders</h2>
+    <button id="dispatch">Dispatch waiting orders</button>
+    <button id="refresh">Refresh</button>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Courier</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="orders"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Couriers</h2>
+    <ul id="couriers"></ul>
+  </section>
+
+  <script>
+    let restaurants = [];
+
+    function showMessage(text) {
+      document.getElementById("message").textContent = text;
+    }
+
+    async function request(path, data) {
+      const options = {};
+
+      if (data !== undefined) {
+        options.method = "POST";
+        options.headers = { "Content-Type": "application/json" };
+        options.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(path, options);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "The request failed.");
+      }
+
+      return result;
+    }
+
+    function fillSelect(id, records) {
+      const select = document.getElementById(id);
+      const previousValue = select.value;
+      select.replaceChildren();
+
+      for (const record of records) {
+        select.add(new Option(record.name, record.id));
+      }
+
+      if (records.some(record => record.id === previousValue)) {
+        select.value = previousValue;
+      }
+    }
+
+    function showMenu() {
+      const restaurantId = document.getElementById("restaurant").value;
+      const restaurant = restaurants.find(item => item.id === restaurantId);
+
+      document.getElementById("menu").textContent = restaurant
+        ? restaurant.menu.map(item => `${item.name}: ${item.price.toFixed(2)}`).join(" · ")
+        : "";
+    }
+
+    async function refresh() {
+      const state = await request("/api/state");
+
+      restaurants = state.restaurants;
+      fillSelect("customer", state.customers);
+      fillSelect("restaurant", restaurants);
+      showMenu();
+
+      const orders = document.getElementById("orders");
+      orders.replaceChildren();
+
+      for (const order of state.orders) {
+        const row = orders.insertRow();
+
+        for (const value of [
+          order.id,
+          order.customer,
+          order.state,
+          order.courier || "Unassigned",
+          order.total.toFixed(2)
+        ]) {
+          row.insertCell().textContent = value;
+        }
+
+        const actions = row.insertCell();
+
+        // Python supplies the actions currently available for this order.
+        for (const action of order.actions) {
+          const button = document.createElement("button");
+          button.textContent = action.label;
+          button.onclick = () => perform(
+            `/api/orders/${order.id}/${action.name}`, {}
+          );
+          actions.appendChild(button);
+        }
+      }
+
+      const couriers = document.getElementById("couriers");
+      couriers.replaceChildren();
+
+      for (const courier of state.couriers) {
+        const item = document.createElement("li");
+        item.textContent = `${courier.name} (${courier.vehicle}) — ${courier.status}`;
+        couriers.appendChild(item);
+      }
+    }
+
+    async function perform(path, data) {
+      try {
+        const result = await request(path, data);
+        showMessage(result.message);
+      } catch (error) {
+        showMessage(error.message);
+      }
+
+      // Reload even after an error so the page reflects the actual Python state.
+      try {
+        await refresh();
+      } catch (error) {
+        showMessage(`Unable to refresh: ${error.message}`);
+      }
+    }
+
+    document.getElementById("order-form").onsubmit = event => {
+      event.preventDefault();
+
+      perform("/api/orders", {
+        customer_id: document.getElementById("customer").value,
+        restaurant_id: document.getElementById("restaurant").value,
+        items: document.getElementById("items").value,
+        delivery: document.getElementById("delivery").value
+      });
+    };
+
+    document.getElementById("restaurant").onchange = showMenu;
+
+    document.getElementById("dispatch").onclick = () => {
+      perform("/api/dispatch", {});
+    };
+
+    document.getElementById("refresh").onclick = () => {
+      refresh().catch(error => showMessage(error.message));
+    };
+
+    refresh().catch(() => {
+      showMessage("Cannot connect to the Python application.");
+    });
+  </script>
+</body>
+</html>
