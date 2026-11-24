@@ -7,10 +7,36 @@ def load_sample_data(app):
     """Fill the app with a small fixed city so the demo always looks the same."""
     catalog = app.catalog
 
-    catalog.add_restaurant("R1", "Pizza Place", 2, 2,
-                           {"Pizza": 8.50, "Cola": 2.00, "Salad": 6.00})
-    catalog.add_restaurant("R2", "Sushi Bar", 7, 6,
-                           {"Sushi Roll": 12.00, "Miso Soup": 4.00})
+    sample_restaurants = [
+    (
+        "R1",
+        "Pizza Place",
+        2,
+        2,
+        {"Pizza": 8.50, "Cola": 2.00, "Salad": 6.00},
+    ),
+    (
+        "R2",
+        "Sushi Bar",
+        7,
+        6,
+        {"Sushi Roll": 12.00, "Miso Soup": 4.00},
+    ),
+    (
+        "R3",
+        "Hamburger Joint",
+        14,
+        10,
+        {"Hamburger": 10.00, "Fries": 3.00},
+    ),
+]
+    for restaurant_id, name, x, y, dishes in sample_restaurants:
+        try:
+            app.restaurants.get(restaurant_id)
+        except NotFoundError:
+            catalog.add_restaurant(
+                restaurant_id, name, x, y, dishes
+        )
 
     sample_customers = [
         ("C1", "Tara", 1, 1),  

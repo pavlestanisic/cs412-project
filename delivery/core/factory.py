@@ -19,12 +19,18 @@ from delivery.core.order_service import OrderService
 class AppContext:
     """A bag that holds every connected part of one running app."""
 
-    def __init__(self, dispatcher_name="nearest", customer_repository=None):
+    def __init__(self, dispatcher_name="nearest", customer_repository=None, restaurant_repository=None):
+
         if customer_repository is None:
             self.customers = CustomerRepository()
         else:
             self.customers = customer_repository
-        self.restaurants = RestaurantRepository()
+
+        if restaurant_repository is None:
+            self.restaurants = RestaurantRepository()
+        else:
+            self.restaurants = restaurant_repository
+
         self.couriers = CourierRepository()
         self.orders = OrderRepository()
 
@@ -50,10 +56,12 @@ class AppContext:
         return messages
 
 
-def build_app(dispatcher_name="nearest", customer_repository=None):
+def build_app(dispatcher_name="nearest", customer_repository=None, restaurant_repository=None):
     """Create a fresh, empty, fully connected app."""
     return AppContext(
         dispatcher_name = dispatcher_name,
-        customer_repository = customer_repository,)
+        customer_repository = customer_repository,
+        restaurant_repository = restaurant_repository,
+    )
 
 
