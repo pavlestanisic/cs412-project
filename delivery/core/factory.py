@@ -6,6 +6,7 @@ The console consumes the resulting context; common domain code stays independent
 
 """
 
+from delivery.storage import customer_repository
 from delivery.storage.repositories import (CourierRepository, CustomerRepository,
                                    OrderRepository, RestaurantRepository)
 from delivery.core.catalog_service import CatalogService
@@ -18,9 +19,11 @@ from delivery.core.order_service import OrderService
 class AppContext:
     """A bag that holds every connected part of one running app."""
 
-    def __init__(self, dispatcher_name="nearest"):
-        # --- data layer ---
-        self.customers = CustomerRepository()
+    def __init__(self, dispatcher_name="nearest", customer_repository=None):
+        if customer_repository is None:
+            self.customers = CustomerRepository()
+        else:
+            self.customers = customer_repository
         self.restaurants = RestaurantRepository()
         self.couriers = CourierRepository()
         self.orders = OrderRepository()
@@ -47,8 +50,10 @@ class AppContext:
         return messages
 
 
-def build_app(dispatcher_name="nearest"):
+def build_app(dispatcher_name="nearest", customer_repository=None):
     """Create a fresh, empty, fully connected app."""
-    return AppContext(dispatcher_name)
+    return AppContext(
+        dispatcher_name = dispatcher_name,
+        customer_repository = customer_repository,)
 
 

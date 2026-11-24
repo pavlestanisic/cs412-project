@@ -1,3 +1,6 @@
+from delivery.common.errors import NotFoundError 
+
+
 """Populate a supplied application using its catalog service."""
 
 def load_sample_data(app):
@@ -9,10 +12,18 @@ def load_sample_data(app):
     catalog.add_restaurant("R2", "Sushi Bar", 7, 6,
                            {"Sushi Roll": 12.00, "Miso Soup": 4.00})
 
-    catalog.add_customer("C1", "Ana", 3, 5)
-    catalog.add_customer("C2", "Petar", 9, 9)
-    catalog.add_customer("C3", "Maja", 0, 4)
-    catalog.add_customer("C4", "Luka", 6, 1)
+    sample_customers = [
+        ("C1", "Tara", 1, 1),  
+        ("C2", "Alice", 5, 5),    
+        ("C3", "Xhoi", 9, 9),
+        ("C3", "Dusan", 9, 9),
+    ]
+
+    for customer_id, name, x, y in sample_customers:
+        try:
+            app.customers.get(customer_id)
+        except NotFoundError:
+            catalog.add_customer(customer_id, name, x, y)
 
     catalog.hire_courier("bike", "K1", "Marko", 1, 1)
     catalog.hire_courier("car", "K2", "Jelena", 8, 8)

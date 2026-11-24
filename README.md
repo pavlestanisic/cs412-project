@@ -34,6 +34,7 @@ Run these commands from the project folder:
 | `python3 main.py --menu --log-console` | Also displays application logs in the terminal. |
 | `python3 main.py --menu --log-level DEBUG --log-console` | Includes detailed logs in the file and terminal. |
 | `python3 main.py --menu --log-file /tmp/food-delivery.log` | Writes logs to the specified file. |
+| `python3 -m unittest discover -s tests/unit -v` | Run unit tests
 
 **Include `--menu` to operate the app yourself.** Without it, the demo runs and
 returns you to the terminal. Each launch starts a fresh session with no orders.
@@ -159,6 +160,9 @@ pricing and estimated cooking time; it does not move an order ahead in the queue
 Logs append to `logs/app.log` inside the project folder. Use `--log-file` to select
 a different file, and `--log-console` to also show logs in the terminal. Supported
 standard levels include `DEBUG`, `INFO`, `WARNING` and `ERROR`; the default is INFO.
+Unexpected exceptions after logging is configured are recorded with their traceback
+in the log file, then re-raised so the program still reports the failure in the
+terminal.
 
 Orders and courier state exist only in memory and disappear when the app exits.
 Log files are retained, but the application does not restore orders from them.

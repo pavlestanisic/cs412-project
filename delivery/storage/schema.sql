@@ -1,6 +1,6 @@
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     address_x REAL NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE customers (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
 
-CREATE TABLE restaurants (
+CREATE TABLE IF NOT EXISTS  restaurants (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     location_x REAL NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE restaurants (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
 
-CREATE TABLE menu_items (
+CREATE TABLE IF NOT EXISTS  menu_items (
     id INTEGER PRIMARY KEY,
     restaurant_id TEXT NOT NULL REFERENCES restaurants(id),
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
@@ -27,7 +27,7 @@ CREATE TABLE menu_items (
     UNIQUE (restaurant_id, name)
 );
 
-CREATE TABLE couriers (
+CREATE TABLE IF NOT EXISTS couriers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     vehicle TEXT NOT NULL
@@ -37,7 +37,7 @@ CREATE TABLE couriers (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
 
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS   orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_id TEXT NOT NULL REFERENCES customers(id),
     restaurant_id TEXT NOT NULL REFERENCES restaurants(id),
@@ -74,7 +74,7 @@ CREATE TABLE orders (
     )
 );
 
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id INTEGER PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id),
     menu_item_id INTEGER NOT NULL REFERENCES menu_items(id),
@@ -89,7 +89,7 @@ CREATE TABLE order_items (
         CHECK (typeof(quantity) = 'integer' AND quantity > 0)
 );
 
-CREATE TABLE order_events (
+CREATE TABLE IF NOT EXISTS order_events (
     id INTEGER PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id),
     event TEXT NOT NULL
@@ -102,11 +102,11 @@ CREATE TABLE order_events (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX one_active_order_per_courier
+CREATE UNIQUE INDEX IF NOT EXISTS   one_active_order_per_courier
 ON orders(courier_id)
 WHERE state IN ('ASSIGNED', 'PICKED_UP');
 
-CREATE INDEX orders_by_customer ON orders(customer_id);
-CREATE INDEX orders_by_state ON orders(state);
-CREATE INDEX items_by_order ON order_items(order_id);
-CREATE INDEX events_by_order ON order_events(order_id);
+CREATE INDEX IF NOT EXISTS  orders_by_customer ON orders(customer_id);
+CREATE INDEX IF NOT EXISTS orders_by_state ON orders(state);
+CREATE INDEX IF NOT EXISTS items_by_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS events_by_order ON order_events(order_id);
