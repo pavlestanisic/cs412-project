@@ -8,6 +8,7 @@ from delivery.core.factory import build_app
 from delivery.producer.sample_data import load_sample_data
 from delivery.storage.database import initialize_database 
 from delivery.storage.customer_repository import CustomerRepository
+from delivery.storage.restaurant_repository import RestaurantRepository
 from delivery.console.app import ConsoleApp
 
 def main(argv=None, output=print, input_func=input):
@@ -24,7 +25,8 @@ def main(argv=None, output=print, input_func=input):
         initialize_database()
 
         app = build_app(dispatcher_name=args.dispatcher,
-                        customer_repository=CustomerRepository())
+                        customer_repository=CustomerRepository(),
+                        restaurant_repository=RestaurantRepository())
         load_sample_data(app)
         console = ConsoleApp(app, output=output, input_func=input_func)
 

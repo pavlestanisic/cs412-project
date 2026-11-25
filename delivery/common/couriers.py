@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 
 from delivery.common.errors import InvalidStateError, ValidationError
+from delivery.common.location import Location
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +56,8 @@ class Courier(ABC):
         if delivered:
             self.delivered_count += 1
             # After delivery the courier stands at the customer's door.
-            self.location = self._current_order.customer.location
+            destination = self._current_order.customer.location
+            self.location = Location(destination.x, destination.y)
         log.debug("Courier %s finished order %s", self.id, self._current_order.id)
         self._current_order = None
 

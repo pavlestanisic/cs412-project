@@ -14,6 +14,9 @@ import logging
 from delivery.common.observer import Subject
 from delivery.common.order_states import NewState
 
+from delivery.common.location import Location
+from delivery.common.people import MenuItem
+
 log = logging.getLogger(__name__)
 
 
@@ -21,7 +24,7 @@ class OrderLine:
     """One row of an order: a menu item and how many of it."""
 
     def __init__(self, item, quantity):
-        self.item = item
+        self.item = MenuItem(item.name, item.price)  
         self.quantity = quantity
 
     def total(self):
@@ -35,7 +38,9 @@ class OrderLine:
 class Order(Subject):
     """A customer's food order."""
 
-    def __init__(self, order_id, customer, restaurant, lines, delivery_factory, note=""):
+    def __init__(self, order_id, customer, restaurant, lines, delivery_factory, note="",
+                delivery_location=None, delivery_fee=None):
+        
         super().__init__()  # sets up the observer list (from Subject)
         self.id = order_id
         self.customer = customer
@@ -43,10 +48,21 @@ class Order(Subject):
         self.lines = list(lines)
         self.note = note
 
+        if delivery_location is None:
+            delivery_location = customer.location   
+
+        # Copy the destination so customer edits do not change it 
+        self.delivery_location = Location(delivery_location.x, delivery_location.y)  
+
         # ABSTRACT FACTORY in use: the factory gives us a MATCHING pair.
         self.delivery_option = delivery_factory.name
         self._price_calculator = delivery_factory.create_price_calculator()
         self._time_estimator = delivery_factory.create_time_estimator()
+
+        if delivery_fee is None:
+            delivery_fee = self._price_calculator.delivery_fee(self.distance_km())
+
+        self._delivery_fee = delivery_fee
 
         self._state = NewState()  # every order starts as NEW
         self._courier = None
@@ -70,7 +86,7 @@ class Order(Subject):
 
     def distance_km(self):
         """Street distance from the restaurant to the customer."""
-        return self.restaurant.location.distance_to(self.customer.location)
+        return self.restaurant.location.distance_to(self.delivery_location)
 
     def food_total(self):
         """Sum of all order lines."""
@@ -78,7 +94,7 @@ class Order(Subject):
 
     def delivery_fee(self):
         """Fee from the price calculator of the chosen delivery option."""
-        return self._price_calculator.delivery_fee(self.distance_km())
+        return self._delivery_fee
 
     def total(self):
         """What the customer pays: food + delivery."""

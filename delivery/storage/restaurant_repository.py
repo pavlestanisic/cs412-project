@@ -5,15 +5,27 @@ from delivery.common.errors import NotFoundError, ValidationError
 from delivery.common.location import Location
 from delivery.common.people import MenuItem, Restaurant
 from delivery.storage.database import get_connection
-
+from contextlib import contextmanager
 
 class RestaurantRepository:
     """Store restaurants and their menus using SQLite."""
 
+    def __init__(self, connection=None):
+        self.connection = connection
+
+    @contextmanager
+    def get_connection(self):
+        """Provide a connection to the database, either the one passed in or a new one."""
+        if self.connection is not None:
+            yield self.connection
+        else:
+            with get_connection() as connection:
+                yield connection
+
     def add(self, restaurant):
         """Save a restaurant and its menu together."""
         try:
-            with get_connection() as connection:
+            with self.get_connection() as connection:
                 connection.execute(
                     """
                     INSERT INTO restaurants (
@@ -57,7 +69,7 @@ class RestaurantRepository:
 
     def get(self, restaurant_id):
         """Find a restaurant and load its menu."""
-        with get_connection() as connection:
+        with self.get_connection() as connection:
             row = connection.execute(
                 """
                 SELECT id, name, location_x, location_y
@@ -76,7 +88,7 @@ class RestaurantRepository:
 
     def all(self):
         """Return all restaurants with their available menu items."""
-        with get_connection() as connection:
+        with self.get_connection() as connection:
             rows = connection.execute(
                 """
                 SELECT id, name, location_x, location_y
@@ -95,7 +107,7 @@ class RestaurantRepository:
 
     def count(self):
         """Return the number of stored restaurants."""
-        with get_connection() as connection:
+        with self.get_connection() as connection:
             row = connection.execute(
                 "SELECT COUNT(*) AS total FROM restaurants"
             ).fetchone()
