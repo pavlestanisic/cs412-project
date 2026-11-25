@@ -3,42 +3,31 @@ import sqlite3
 from delivery.common.errors import NotFoundError, ValidationError
 from delivery.common.location import Location
 from delivery.common.people import Customer
-from delivery.storage.database import get_connection
-from contextlib import contextmanager
 
 
 class CustomerRepository:
     """Store and retrieve customers using SQLite."""
-    def __init__(self, connection = None):
+
+    def __init__(self, connection):
         self.connection = connection
 
-    @contextmanager
-    def get_connection(self):
-        """Provide a connection to the database, either the one passed in or a new one."""
-        if self.connection is not None:
-            yield self.connection
-        else:
-            with get_connection() as connection:
-                yield connection
-       
     def add(self, customer):
         """Save a customer and return the supplied object."""
         try:
-            with self.get_connection() as connection:
-                connection.execute(
-                    """
-                    INSERT INTO customers (
-                        id, name, address_x, address_y
-                    )
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (
-                        customer.id,
-                        customer.name,
-                        customer.location.x,
-                        customer.location.y,
-                    ),
+            self.connection.execute(
+                """
+                INSERT INTO customers (
+                    id, name, address_x, address_y
                 )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    customer.id,
+                    customer.name,
+                    customer.location.x,
+                    customer.location.y,
+                ),
+            )
         except sqlite3.IntegrityError as error:
             raise ValidationError(
                 f"Cannot save customer '{customer.id}': "
@@ -49,15 +38,14 @@ class CustomerRepository:
 
     def get(self, customer_id):
         """Find one customer or report that the ID does not exist."""
-        with self.get_connection() as connection:
-            row = connection.execute(
-                """
-                SELECT id, name, address_x, address_y
-                FROM customers
-                WHERE id = ?
-                """,
-                (customer_id,),
-            ).fetchone()
+        row = self.connection.execute(
+            """
+            SELECT id, name, address_x, address_y
+            FROM customers
+            WHERE id = ?
+            """,
+            (customer_id,),
+        ).fetchone()
 
         if row is None:
             raise NotFoundError(
@@ -68,14 +56,13 @@ class CustomerRepository:
 
     def all(self):
         """Return all customers in a predictable order."""
-        with self.get_connection() as connection:
-            rows = connection.execute(
-                """
-                SELECT id, name, address_x, address_y
-                FROM customers
-                ORDER BY id
-                """
-            ).fetchall()
+        rows = self.connection.execute(
+            """
+            SELECT id, name, address_x, address_y
+            FROM customers
+            ORDER BY id
+            """
+        ).fetchall()
 
         customers = []
 
@@ -87,14 +74,11 @@ class CustomerRepository:
 
     def count(self):
         """Return the number of stored customers."""
-        with self.get_connection() as connection:
-            row = connection.execute(
-                "SELECT COUNT(*) AS total FROM customers"
-            ).fetchone()
+        row = self.connection.execute(
+            "SELECT COUNT(*) AS total FROM customers"
+        ).fetchone()
 
         return row["total"]
-
-    
 
     @staticmethod
     def _to_customer(row):

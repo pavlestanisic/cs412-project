@@ -16,8 +16,8 @@ class EntrypointLoggingTestCase(unittest.TestCase):
                 log_file = Path(directory) / "app.log"
                 error = ValidationError("sample data failed")
 
-                with patch("delivery.core.entrypoint.initialize_database"), \
-                        patch("delivery.core.entrypoint.load_sample_data", side_effect=error):
+                # The demo uses an in-memory database, so no file is touched.
+                with patch("delivery.core.entrypoint.load_sample_data", side_effect=error):
                     with self.assertRaises(ValidationError):
                         main(["--log-file", str(log_file)])
 

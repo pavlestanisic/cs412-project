@@ -1,7 +1,11 @@
-from delivery.common.errors import NotFoundError 
+"""
+Populate a supplied application using its catalog service.
 
+Safe to run on every start: anything already saved in the database is
+skipped, so a restored app is never filled twice.
+"""
 
-"""Populate a supplied application using its catalog service."""
+from delivery.common.errors import NotFoundError
 
 def load_sample_data(app):
     """Fill the app with a small fixed city so the demo always looks the same."""
@@ -32,7 +36,7 @@ def load_sample_data(app):
 ]
     for restaurant_id, name, x, y, dishes in sample_restaurants:
         try:
-            app.restaurants.get(restaurant_id)
+            catalog.get_restaurant(restaurant_id)
         except NotFoundError:
             catalog.add_restaurant(
                 restaurant_id, name, x, y, dishes
@@ -42,16 +46,25 @@ def load_sample_data(app):
         ("C1", "Tara", 1, 1),  
         ("C2", "Alice", 5, 5),    
         ("C3", "Xhoi", 9, 9),
-        ("C3", "Dusan", 9, 9),
+        ("C4", "Dusan", 9, 9),
     ]
 
     for customer_id, name, x, y in sample_customers:
         try:
-            app.customers.get(customer_id)
+            catalog.get_customer(customer_id)
         except NotFoundError:
             catalog.add_customer(customer_id, name, x, y)
 
-    catalog.hire_courier("bike", "K1", "Marko", 1, 1)
-    catalog.hire_courier("car", "K2", "Jelena", 8, 8)
-    catalog.hire_courier("walking", "K3", "Ivan", 4, 4)
+    sample_couriers = [
+        ("bike", "K1", "Marko", 1, 1),
+        ("car", "K2", "Jelena", 8, 8),
+        ("walking", "K3", "Ivan", 4, 4),
+    ]
+
+    for vehicle, courier_id, name, x, y in sample_couriers:
+        try:
+            catalog.get_courier(courier_id)
+        except NotFoundError:
+            catalog.hire_courier(vehicle, courier_id, name, x, y)
+
     return app

@@ -27,6 +27,8 @@ Run these commands from the project folder:
 | `python3 main.py --menu` | Opens the interactive menu; assigns the nearest free courier. |
 | `python3 main.py --menu --dispatcher nearest` | Explicitly selects nearest-courier assignment. |
 | `python3 main.py --menu --dispatcher fastest` | Assigns couriers by estimated arrival time. |
+| `python3 main.py --web` | Serves the web page at http://127.0.0.1:8000/ (Ctrl+C stops it). |
+| `python3 main.py --web --port 8080` | Serves the web page on another port. |
 | `python3 main.py` | Runs a scripted demonstration and exits. |
 | `python3 main.py --dispatcher fastest` | Runs the demonstration using fastest-courier assignment. |
 | `python3 -m delivery --menu` | Opens the same interactive menu through the package launcher. |
@@ -37,7 +39,8 @@ Run these commands from the project folder:
 | `python3 -m unittest discover -s tests/unit -v` | Run unit tests
 
 **Include `--menu` to operate the app yourself.** Without it, the demo runs and
-returns you to the terminal. Each launch starts a fresh session with no orders.
+returns you to the terminal. The menu and the web page save their work in `data/delivery.db` and
+continues where the previous run stopped; the demo always starts empty.
 
 ## Menu commands
 
@@ -164,8 +167,8 @@ Unexpected exceptions after logging is configured are recorded with their traceb
 in the log file, then re-raised so the program still reports the failure in the
 terminal.
 
-Orders and courier state exist only in memory and disappear when the app exits.
-Log files are retained, but the application does not restore orders from them.
+Customers, restaurants, couriers and orders are saved in `data/delivery.db` and
+restored on the next `--menu` or `--web` start. Delete that file to start over.
 Notifications are displayed messages; no SMS or email is sent. Pickup and delivery
 are recorded immediately when selected, with no background driving simulation.
 
@@ -179,11 +182,12 @@ delivery/
   common/         Domain objects, states, builders, errors, configuration and logging
   core/           Application construction, startup and order/catalog operations
   dispatch/       Courier selection policies
-  storage/        In-memory repositories
+  storage/        SQLite repositories, schema, loading and transactions
   observers/      Customer/restaurant messages and event logging
   reliability/    Order/courier consistency checks
   producer/       Sample city data
   console/        Interactive menu and scripted demo
+  web/            Web page and its small HTTP server (local use only)
   __main__.py     Package launcher
 main.py           Program launcher
 docs/             Architecture guide

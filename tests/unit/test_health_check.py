@@ -2,6 +2,7 @@ import unittest
 
 from delivery.core.factory import build_app
 from delivery.producer.sample_data import load_sample_data
+from delivery.storage.database import IN_MEMORY
 
 class HealthCheckTestCase(unittest.TestCase):
 
@@ -9,7 +10,8 @@ class HealthCheckTestCase(unittest.TestCase):
         self.assertEqual(self.app.health.problems(), [])
     
     def setUp(self):
-        self.app = load_sample_data(build_app())
+        self.app = load_sample_data(build_app(database=IN_MEMORY))
+        self.addCleanup(self.app.close)
 
     def test_initial_application_is_healthy(self):
         self.assert_app_is_healthy()
@@ -25,7 +27,7 @@ class HealthCheckTestCase(unittest.TestCase):
         order = self.app.order_service.place_order(
             "C1", "R1", [("Pizza", 1)]
         )
-        courier = self.app.couriers.get("K1")
+        courier = self.app.catalog.get_courier("K1")
         
         #Unhealthy state
         #NEW ORDER MUST NOT HAVE A COURIER 

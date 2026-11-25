@@ -4,59 +4,49 @@ from decimal import Decimal, InvalidOperation
 from delivery.common.errors import NotFoundError, ValidationError
 from delivery.common.location import Location
 from delivery.common.people import MenuItem, Restaurant
-from delivery.storage.database import get_connection
-from contextlib import contextmanager
 
 class RestaurantRepository:
     """Store restaurants and their menus using SQLite."""
 
-    def __init__(self, connection=None):
+    def __init__(self, connection):
         self.connection = connection
 
-    @contextmanager
-    def get_connection(self):
-        """Provide a connection to the database, either the one passed in or a new one."""
-        if self.connection is not None:
-            yield self.connection
-        else:
-            with get_connection() as connection:
-                yield connection
 
     def add(self, restaurant):
         """Save a restaurant and its menu together."""
         try:
-            with self.get_connection() as connection:
+            connection = self.connection
+            connection.execute(
+                """
+                INSERT INTO restaurants (
+                    id, name, location_x, location_y
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    restaurant.id,
+                    restaurant.name,
+                    restaurant.location.x,
+                    restaurant.location.y,
+                ),
+            )
+
+            for item in restaurant.menu_items():
+                price_cents = self._to_cents(item.price)
+
                 connection.execute(
                     """
-                    INSERT INTO restaurants (
-                        id, name, location_x, location_y
+                    INSERT INTO menu_items (
+                        restaurant_id, name, price_cents
                     )
-                    VALUES (?, ?, ?, ?)
+                    VALUES (?, ?, ?)
                     """,
                     (
                         restaurant.id,
-                        restaurant.name,
-                        restaurant.location.x,
-                        restaurant.location.y,
+                        item.name,
+                        price_cents,
                     ),
                 )
-
-                for item in restaurant.menu_items():
-                    price_cents = self._to_cents(item.price)
-
-                    connection.execute(
-                        """
-                        INSERT INTO menu_items (
-                            restaurant_id, name, price_cents
-                        )
-                        VALUES (?, ?, ?)
-                        """,
-                        (
-                            restaurant.id,
-                            item.name,
-                            price_cents,
-                        ),
-                    )
 
         except sqlite3.IntegrityError as error:
             raise ValidationError(
@@ -69,48 +59,48 @@ class RestaurantRepository:
 
     def get(self, restaurant_id):
         """Find a restaurant and load its menu."""
-        with self.get_connection() as connection:
-            row = connection.execute(
-                """
-                SELECT id, name, location_x, location_y
-                FROM restaurants
-                WHERE id = ?
-                """,
-                (restaurant_id,),
-            ).fetchone()
+        connection = self.connection
+        row = connection.execute(
+            """
+            SELECT id, name, location_x, location_y
+            FROM restaurants
+            WHERE id = ?
+            """,
+            (restaurant_id,),
+        ).fetchone()
 
-            if row is None:
-                raise NotFoundError(
-                    f"No restaurant with id {restaurant_id}."
-                )
+        if row is None:
+            raise NotFoundError(
+                f"No restaurant with id {restaurant_id}."
+            )
 
-            return self._to_restaurant(connection, row)
+        return self._to_restaurant(connection, row)
 
     def all(self):
         """Return all restaurants with their available menu items."""
-        with self.get_connection() as connection:
-            rows = connection.execute(
-                """
-                SELECT id, name, location_x, location_y
-                FROM restaurants
-                ORDER BY id
-                """
-            ).fetchall()
+        connection = self.connection
+        rows = connection.execute(
+            """
+            SELECT id, name, location_x, location_y
+            FROM restaurants
+            ORDER BY id
+            """
+        ).fetchall()
 
-            restaurants = []
+        restaurants = []
 
-            for row in rows:
-                restaurant = self._to_restaurant(connection, row)
-                restaurants.append(restaurant)
+        for row in rows:
+            restaurant = self._to_restaurant(connection, row)
+            restaurants.append(restaurant)
 
         return restaurants
 
     def count(self):
         """Return the number of stored restaurants."""
-        with self.get_connection() as connection:
-            row = connection.execute(
-                "SELECT COUNT(*) AS total FROM restaurants"
-            ).fetchone()
+        connection = self.connection
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM restaurants"
+        ).fetchone()
 
         return row["total"]
 

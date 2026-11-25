@@ -82,13 +82,16 @@ class RestaurantNotifier(MessageNotifier):
 
 
 # Watches every event delivered to update, without filtering its name.
-# One shared instance counts events across all attached orders. Counts are kept
-# in memory; each log entry identifies the emitting order and its current state.
+# One shared instance counts events across all attached orders. At startup the
+# counts are read ONCE from the saved history (order_events); after that only
+# newly committed events add to them. Restored events are never replayed, so
+# nothing is counted twice. Each log entry identifies the order and its state.
 class EventLogObserver(Observer):
     """Writes each event into the app log. Also counts events (for reports)."""
 
-    def __init__(self):
-        self.event_counts = {}  # event text -> how many times it happened
+    def __init__(self, saved_counts=None):
+        # event text -> how many times it happened, including earlier runs
+        self.event_counts = dict(saved_counts or {})
 
     def update(self, order, event):
         self.event_counts[event] = self.event_counts.get(event, 0) + 1

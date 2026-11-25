@@ -5,12 +5,15 @@ See [README](../README.md) for commands and the interactive workflow.
 ## Application overview
 
 The `delivery` package is a layered console application. `core.entrypoint` configures
-logging and calls `core.factory.build_app()` to create repositories, observers and
-services. Sample data enters through CatalogService. ConsoleApp sends operations
-to OrderService, which builds orders, stores them, attaches observers, selects
-couriers and invokes state transitions. Repositories retain live objects in
-memory. Notifications collect messages for display; no SMS or email is sent.
-EventLogObserver records events and counts them in memory.
+logging and calls `core.factory.build_app()`, which opens the SQLite database,
+restores every saved customer, restaurant, courier and order into one shared
+`LoadedData`, and creates observers and services. Sample data enters through
+CatalogService and is skipped when already saved. ConsoleApp (or the web page
+through `web.server`) sends operations
+to OrderService, which builds orders, attaches observers, selects couriers,
+invokes state transitions and saves each change in one transaction through the
+SQL repositories. Notifications collect messages for display; no SMS or email
+is sent. EventLogObserver starts from the event counts saved in `order_events`.
 
 An order moves from NEW to ASSIGNED to PICKED_UP to DELIVERED. Cancellation is
 allowed from NEW or ASSIGNED. Dispatch selects only free couriers; waiting orders
@@ -27,8 +30,10 @@ flowchart TD
     Entry --> Factory[core.factory]
     Entry --> Sample[producer.sample_data]
     Entry --> Console[console.app]
+    Entry --> Web[web.server]
+    Web --> Services
     Factory --> Services[core catalog and order services]
-    Factory --> Storage[storage.repositories]
+    Factory --> Storage[storage: SQLite repositories]
     Factory --> Observers[observers.notifiers]
     Factory --> Dispatch[dispatch.strategies]
     Factory --> Health[reliability.health_check]
@@ -71,7 +76,7 @@ assert app.health.is_healthy()
 | Template Method | `dispatch/strategies.py`: Dispatcher.dispatch | Fixes candidate filtering, selection and assignment; subclasses choose |
 | Observer | `common/observer.py`, `observers/notifiers.py` | Order broadcasts lifecycle changes to customer, restaurant and event-log observers |
 | State | `common/order_states.py`, `common/order.py` | Order delegates permitted actions to its current state object |
-| Repository | `storage/repositories.py` | Encapsulates dictionary storage and queries |
+| Repository | `storage/*_repository.py` | Encapsulates SQLite tables and queries |
 | Dependency injection | `core/factory.py` and service constructors | Application owns resources and supplies dependencies |
 
 Nearest and fastest selection are interchangeable policies implemented using
@@ -89,13 +94,14 @@ There are no pre-existing orders on startup. Every new process starts fresh.
 
 | Responsibility | Owner |
 | --- | --- |
-| Input parsing and displaying orders/couriers | `console.app.ConsoleApp` |
+| Input parsing and displaying orders/couriers | `console.app.ConsoleApp`, `web.server.WebApi` |
+| Which actions an order offers (web buttons) | `common.order_states` (`actions`, `is_final`) |
 | Registering sample customers, restaurants and couriers | `producer.sample_data` through `core.catalog_service` |
 | Placing, dispatching, picking up, delivering and cancelling | `core.order_service.OrderService` |
 | Selecting a free courier | `dispatch.strategies.Dispatcher` subclasses |
 | Permitted order transitions | `common.order_states` |
 | Courier availability, final location and delivery count | `common.couriers` coordinated by OrderService |
-| In-memory storage | `storage.repositories` |
+| Saving and restoring data (SQLite) | `storage` repositories, `DataLoader`, `TransactionManager` |
 | Customer/restaurant messages and event counts | `observers.notifiers` |
 | Runtime consistency inspection | `reliability.health_check` |
 
@@ -125,6 +131,29 @@ count. Freeing a courier does not automatically dispatch the next order: the
 operator must select option 3 again. Standard/express affects pricing and cooking
 time; it does not prioritize the dispatch queue.
 
-All entity data is held in memory. Notifications are synchronous callbacks on
-mutable order objects; there is no transaction or durable event queue. Health
-checks inspect a limited set of invariants, not all possible application errors.
+## Saving, restoring and notifications
+
+All entity data is saved in SQLite (`data/delivery.db` for the menu; the demo
+and the tests use a throwaway in-memory database). At startup the saved data is
+loaded once; services then work on those objects and save each change:
+
+1. OrderService opens a transaction and changes the order (and its courier).
+   The order only records its event; observers are not told yet.
+2. The change is written through the repositories and committed.
+3. After the commit, the recorded events are announced with `order.notify`.
+
+If anything fails before the commit, the database rolls back. Python objects do
+not roll back, so they are discarded and loaded again from the database, and
+the recorded events are dropped: observers never hear about unsaved changes.
+Restoring an order never emits events; restored orders get the observers
+attached and hear only about later actions. A failing observer is logged and
+skipped, so it cannot stop the other observers or undo the saved change.
+
+Events are delivered **at most once**. If the app crashes after a commit but
+before announcing, the change is saved but its messages are never shown; event
+counts are still correct after the next start because they are read from
+`order_events`. A durable outbox (an "announced" flag on `order_events`) would
+be needed for at-least-once delivery once real SMS or email is sent.
+
+Health checks inspect a limited set of invariants, not all possible application
+errors.

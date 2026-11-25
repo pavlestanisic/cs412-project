@@ -10,24 +10,37 @@ import logging
 
 from delivery.common.builders import RestaurantBuilder
 from delivery.common.couriers import CourierCreator
+from delivery.common.errors import NotFoundError
 from delivery.common.location import Location
 from delivery.common.people import Customer
+from delivery.storage.courier_repository import CourierRepository
+from delivery.storage.customer_repository import CustomerRepository
+from delivery.storage.restaurant_repository import RestaurantRepository
 
 log = logging.getLogger(__name__)
 
 
 class CatalogService:
-    """Adds and lists customers, restaurants and couriers."""
+    """Adds, finds and lists customers, restaurants and couriers."""
 
-    def __init__(self, customers, restaurants, couriers):
-        # Repositories are supplied by the application factory.
-        self._customers = customers
-        self._restaurants = restaurants
-        self._couriers = couriers
+    def __init__(self, data, transactions):
+        """
+        data         -- the application's LoadedData (shared with OrderService)
+        transactions -- TransactionManager for the application's database
+        """
+        self._data = data
+        self._transactions = transactions
+
+    # ----- adding ---------------------------------------------------------
+    # Each new object is saved first and joins the loaded objects only after
+    # the commit, so a failed save (e.g. duplicate ID) leaves nothing behind.
 
     def add_customer(self, customer_id, name, x, y):
         """Register a customer living at grid point (x, y)."""
-        customer = self._customers.add(Customer(customer_id, name, Location(x, y)))
+        customer = Customer(customer_id, name, Location(x, y))
+        with self._transactions.transaction() as connection:
+            CustomerRepository(connection).add(customer)
+        self._data.customers[customer.id] = customer
         log.info("Added customer %s (%s)", name, customer_id)
         return customer
 
@@ -39,7 +52,10 @@ class CatalogService:
         builder = RestaurantBuilder(restaurant_id).named(name).located_at(Location(x, y))
         for dish_name, price in dishes.items():
             builder.add_dish(dish_name, price)
-        restaurant = self._restaurants.add(builder.build())
+        restaurant = builder.build()
+        with self._transactions.transaction() as connection:
+            RestaurantRepository(connection).add(restaurant)
+        self._data.restaurants[restaurant.id] = restaurant
         log.info("Added restaurant %s (%s) with %d dishes", name, restaurant_id, len(dishes))
         return restaurant
 
@@ -50,16 +66,42 @@ class CatalogService:
         """
         creator = CourierCreator.for_vehicle(vehicle)
         courier = creator.hire(courier_id, name, Location(x, y))
-        return self._couriers.add(courier)
+        with self._transactions.transaction() as connection:
+            CourierRepository(connection).add(courier)
+        self._data.couriers[courier.id] = courier
+        return courier
+
+    # ----- finding --------------------------------------------------------
+
+    def get_customer(self, customer_id):
+        """The customer with this ID, or NotFoundError."""
+        return self._find(self._data.customers, customer_id, "customer")
+
+    def get_restaurant(self, restaurant_id):
+        """The restaurant with this ID, or NotFoundError."""
+        return self._find(self._data.restaurants, restaurant_id, "restaurant")
+
+    def get_courier(self, courier_id):
+        """The courier with this ID, or NotFoundError."""
+        return self._find(self._data.couriers, courier_id, "courier")
+
+    @staticmethod
+    def _find(objects_by_id, object_id, kind):
+        found = objects_by_id.get(object_id)
+        if found is None:
+            raise NotFoundError(f"No {kind} with id {object_id}.")
+        return found
+
+    # ----- listing --------------------------------------------------------
 
     def customers(self):
         """All customers."""
-        return self._customers.all()
+        return list(self._data.customers.values())
 
     def restaurants(self):
         """All restaurants."""
-        return self._restaurants.all()
+        return list(self._data.restaurants.values())
 
     def couriers(self):
         """All couriers."""
-        return self._couriers.all()
+        return list(self._data.couriers.values())

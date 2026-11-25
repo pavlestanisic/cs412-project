@@ -10,7 +10,10 @@ The subject keeps a list of observers. When it changes it calls
 observers do - it only knows they have an `update` method.
 """
 
+import logging
 from abc import ABC, abstractmethod
+
+log = logging.getLogger(__name__)
 
 
 # Observers do not watch variables or run background checks. They react only
@@ -54,9 +57,18 @@ class Subject:
         for observer in list(self._observers):
             # Here self is the Order that emitted the event. Pass the live order
             # so the observer can read its customer, courier, items and state.
-            # Callbacks run immediately, one after another. An exception stops
-            # notification and propagates to the caller; there is no retry queue.
-            observer.update(self, event)
+            # Callbacks run immediately, one after another. A failing observer
+            # is logged and skipped, so it cannot stop the others or undo the
+            # change that caused the event. There is no retry.
+            try:
+                observer.update(self, event)
+            except Exception:
+                log.exception(
+                    "Observer %s failed on event %s from %r",
+                    type(observer).__name__,
+                    event,
+                    self,
+                )
 
     @property
     def observers(self):

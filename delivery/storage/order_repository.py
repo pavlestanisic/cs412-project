@@ -1,8 +1,6 @@
 import sqlite3
 from decimal import Decimal, InvalidOperation
 
-from pyparsing import line
-
 from delivery.common.errors import NotFoundError, ValidationError
 from delivery.common.delivery_options import get_delivery_factory
 from delivery.common.location import Location
@@ -11,8 +9,13 @@ from delivery.common.order_states import(NewState, AssignedState, PickedUpState,
 from delivery.common.people import MenuItem
 
 
-
 class OrderRepository:
+    """
+    Store orders, their items and their event history using SQLite.
+
+    Every method uses the connection it was given and never commits:
+    the caller's transaction decides when the changes become permanent.
+    """
 
     def __init__(self, connection):
         self.connection = connection
@@ -121,6 +124,23 @@ class OrderRepository:
 
         return order
 
+    def event_counts(self):
+        """How many times each event has been saved, e.g. {'created': 4}."""
+        rows = self.connection.execute(
+            """
+            SELECT event, COUNT(*) AS total
+            FROM order_events
+            GROUP BY event
+            """
+        ).fetchall()
+
+        counts = {}
+
+        for row in rows:
+            counts[row["event"]] = row["total"]
+
+        return counts
+
     def _add_item(self, order_id, restaurant_id, line):
         """Save one ordered dish with its original price and quantity."""
         if type(line.quantity) is not int or line.quantity <= 0:
@@ -209,14 +229,25 @@ class OrderRepository:
 
     # Function used for loading. It must not call assign(), pick_up(), etc...
     # Those are used for new business actions
-    def load_all():
-        pass
+    def load_all(self, customers, restaurants, couriers):
+        self._check_couriers_are_fresh(couriers)
+        rows = self._read_order_rows()
+
+        orders = {}
+
+        for row in rows:
+            order = self._build_saved_order(row, customers, restaurants)
+            self._restore_state(order, row["state"])
+            self._restore_courier(order, row["courier_id"], couriers)
+            orders[order.id] = order
+
+        return orders
 
 
     #Helper functions 
     @staticmethod
     def _check_couriers_are_fresh(couriers):
-        for couriers in couriers.values():
+        for courier in couriers.values():
             if courier.current_order is not None:
                 raise ValidationError(
                     "Orders must be loaded with fresh courier objects."
@@ -233,7 +264,44 @@ class OrderRepository:
         """
     ).fetchall()
 
-    def _build_saved_order(self, row, couriers, customers, restaurants):
+
+    def _load_items(self, order_id):
+        """Restore the items saved with an order."""
+        rows = self.connection.execute(
+            """
+            SELECT dish_name, unit_price_cents, quantity
+            FROM order_items
+            WHERE order_id = ?
+            ORDER BY id
+            """,
+            (order_id,),
+        ).fetchall()
+
+        if not rows:
+            raise ValidationError(
+                f"Saved order {order_id} has no items."
+            )
+
+        lines = []
+
+        for row in rows:
+            if type(row["quantity"]) is not int or row["quantity"] <= 0:
+                raise ValidationError(
+                    f"Saved order {order_id} has an invalid quantity."
+                )
+
+            item = MenuItem(
+                row["dish_name"],
+                row["unit_price_cents"] / 100,
+            )
+
+            line = OrderLine(item, row["quantity"])
+            lines.append(line)
+
+        return lines
+
+    
+    def _build_saved_order(self, row, customers, restaurants):
         customer = customers.get(row["customer_id"])
         restaurant = restaurants.get(row["restaurant_id"])
 

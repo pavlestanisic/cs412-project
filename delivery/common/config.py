@@ -9,7 +9,10 @@ DEFAULT_LOG_FILE = str(Path(__file__).resolve().parents[2] / "logs" / "app.log")
 def parse_args(argv):
     """Read the command line options."""
     parser = argparse.ArgumentParser(description="Food delivery dispatch app")
-    parser.add_argument("--menu", action="store_true", help="interactive menu instead of the demo")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--menu", action="store_true", help="interactive menu instead of the demo")
+    mode.add_argument("--web", action="store_true", help="serve the web page instead of the demo")
+    parser.add_argument("--port", type=int, default=8000, help="port for --web (default 8000)")
     parser.add_argument("--dispatcher", choices=["nearest", "fastest"], default="nearest",
                         help="how couriers are chosen")
     parser.add_argument("--log-level", default="INFO", help="DEBUG, INFO, WARNING, ERROR")

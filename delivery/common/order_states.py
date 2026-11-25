@@ -27,6 +27,11 @@ class OrderState:
     # True for states where nothing more can happen.
     is_final = False
 
+    # Names of the OrderService actions this state allows ("dispatch" leads
+    # to assign). Keep it in step with the methods each state overrides.
+    # Interfaces (e.g. the web page) offer only these actions.
+    actions = ()
+
     def _refuse(self, action):
         """Helper that raises a clear error for a not-allowed action."""
         raise InvalidStateError(f"Cannot {action} an order that is {self.name}.")
@@ -55,6 +60,7 @@ class NewState(OrderState):
     """Order was placed, no courier yet."""
 
     name = "NEW"
+    actions = ("dispatch", "cancel")
 
     def assign(self, order, courier):
         order.set_courier(courier)
@@ -68,6 +74,7 @@ class AssignedState(OrderState):
     """A courier is on the way to the restaurant."""
 
     name = "ASSIGNED"
+    actions = ("pick_up", "cancel")
 
     def pick_up(self, order):
         order.change_state(PickedUpState(), "picked_up")
@@ -80,6 +87,7 @@ class PickedUpState(OrderState):
     """The courier has the food and rides to the customer."""
 
     name = "PICKED_UP"
+    actions = ("deliver",)
 
     def deliver(self, order):
         order.change_state(DeliveredState(), "delivered")

@@ -22,17 +22,22 @@ ACTIVE_STATES = ("ASSIGNED", "PICKED_UP")
 
 
 class HealthCheck:
-    """Checks the rules above against the stored data."""
+    """Checks the rules above against the loaded orders and couriers."""
 
-    def __init__(self, orders, couriers):
-        self._orders = orders
-        self._couriers = couriers
+    def __init__(self, all_orders, all_couriers):
+        """
+        all_orders, all_couriers -- functions returning the current lists,
+        e.g. order_service.all_orders. They are called on every check, so the
+        check always sees the objects the app is using right now.
+        """
+        self._all_orders = all_orders
+        self._all_couriers = all_couriers
 
     def problems(self):
         """Return a list of text descriptions of every broken rule."""
         found = []
 
-        for courier in self._couriers.all():
+        for courier in self._all_couriers():
             order = courier.current_order
             if order is None:
                 continue
@@ -41,7 +46,7 @@ class HealthCheck:
             if order.state_name not in ACTIVE_STATES:                          # rule 2
                 found.append(f"Courier {courier.id} holds order {order.id} which is {order.state_name}.")
 
-        for order in self._orders.all():
+        for order in self._all_orders():
             if order.state_name in ACTIVE_STATES:                              # rule 3
                 if order.courier is None or order.courier.current_order is not order:
                     found.append(f"Order {order.id} is {order.state_name} but no courier carries it.")

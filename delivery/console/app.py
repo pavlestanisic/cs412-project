@@ -12,24 +12,7 @@ It contains NO business rules. All rules live in the service/domain layers.
 """
 
 from delivery.common.errors import DispatchError
-
-
-def parse_items(text):
-    """
-    Turn 'Pizza*2, Cola' into [('Pizza', 2), ('Cola', 1)].
-    A missing '*number' means quantity 1.
-    """
-    items = []
-    for part in text.split(","):
-        part = part.strip()
-        if not part:
-            continue  # ignore empty pieces like in "Pizza,,Cola"
-        if "*" in part:
-            name, quantity = part.rsplit("*", 1)
-            items.append((name.strip(), int(quantity)))
-        else:
-            items.append((part, 1))
-    return items
+from delivery.common.item_text import parse_items
 
 
 class ConsoleApp:

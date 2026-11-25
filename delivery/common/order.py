@@ -67,6 +67,10 @@ class Order(Subject):
         self._state = NewState()  # every order starts as NEW
         self._courier = None
 
+        # Events that happened but were not announced yet. OrderService
+        # announces them only after the change is saved (see take_events).
+        self._pending_events = []
+
     # ----- read-only information ------------------------------------------
 
     @property
@@ -141,13 +145,24 @@ class Order(Subject):
         self._courier = courier
 
     def change_state(self, new_state, event):
-        """Switch to `new_state` and tell all observers about `event`."""
+        """Switch to `new_state` and remember `event` for later announcement."""
         log.info("Order %s: %s -> %s", self.id, self._state.name, new_state.name)
         self._state = new_state
-        # Announce the new order state immediately. This reports the order's
-        # transition, not completion of the surrounding service operation:
-        # assigning/releasing the courier may still happen after callbacks return.
-        self.notify(event)
+        # Observers are NOT told yet. The change is not saved at this point and
+        # may still be rolled back; OrderService calls notify after the commit.
+        self.record_event(event)
+
+    # ----- events waiting for the save ------------------------------------
+
+    def record_event(self, event):
+        """Remember that `event` happened; it is announced after saving."""
+        self._pending_events.append(event)
+
+    def take_events(self):
+        """Return the remembered events (oldest first) and forget them."""
+        events = self._pending_events
+        self._pending_events = []
+        return events
 
     def __repr__(self):
         return f"Order({self.id}, {self.state_name})"
