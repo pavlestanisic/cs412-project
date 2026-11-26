@@ -1,3 +1,10 @@
+"""
+REPOSITORY pattern - customers in SQLite.
+
+Like every repository here, it works on the connection it is given and
+never commits; the caller's transaction does that.
+"""
+
 import sqlite3
 
 from delivery.common.errors import NotFoundError, ValidationError
@@ -82,7 +89,7 @@ class CustomerRepository:
 
     @staticmethod
     def _to_customer(row):
-        """Convert a database row into an existing domain object."""
+        """Convert a database row into a Customer object."""
         location = Location(
             row["address_x"],
             row["address_y"],

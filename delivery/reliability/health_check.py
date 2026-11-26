@@ -3,7 +3,8 @@ RUNTIME CHECKS - rules that must ALWAYS be true while the app runs.
 
 `HealthCheck.problems()` looks at all orders and couriers and returns a list
 of broken rules (an empty list means "all good"). The app runs it at the end
-of the demo and when the operator selects the health-check menu option.
+of the demo, from menu option 9, and when the menu or web page stops (the
+result becomes the exit code).
 
 Rules:
   1. A busy courier's order must say that courier is the one carrying it.

@@ -1,4 +1,4 @@
-"""Command-line configuration shared by both launch paths."""
+"""Command-line options, shared by main.py and `python -m delivery`."""
 
 import argparse
 from pathlib import Path

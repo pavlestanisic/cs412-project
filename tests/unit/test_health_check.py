@@ -28,9 +28,8 @@ class HealthCheckTestCase(unittest.TestCase):
             "C1", "R1", [("Pizza", 1)]
         )
         courier = self.app.catalog.get_courier("K1")
-        
-        #Unhealthy state
-        #NEW ORDER MUST NOT HAVE A COURIER 
+
+        # Break rule 4 on purpose: a NEW order must not have a courier.
         order.set_courier(courier)
 
         problems = self.app.health.problems()

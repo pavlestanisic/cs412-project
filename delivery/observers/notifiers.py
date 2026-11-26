@@ -8,7 +8,8 @@ Each notifier listens to orders and reacts to events in its own way:
   * EventLogObserver   -- writes every event into the log file
 
 The notifiers do not really send SMS/e-mail. They keep the messages in a
-list called `messages` for the console to display.
+list called `messages`; AppContext.take_messages() hands them to the console
+or the web page to display.
 """
 
 import logging

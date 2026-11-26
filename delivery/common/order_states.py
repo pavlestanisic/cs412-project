@@ -28,8 +28,9 @@ class OrderState:
     is_final = False
 
     # Names of the OrderService actions this state allows ("dispatch" leads
-    # to assign). Keep it in step with the methods each state overrides.
-    # Interfaces (e.g. the web page) offer only these actions.
+    # to assign). Keep it in step with the methods each state overrides;
+    # StateActionsTestCase (tests/unit/test_web.py) fails if they drift.
+    # The web page shows a button only for these actions.
     actions = ()
 
     def _refuse(self, action):

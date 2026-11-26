@@ -5,22 +5,28 @@ from delivery.common.errors import NotFoundError, ValidationError
 from delivery.common.delivery_options import get_delivery_factory
 from delivery.common.location import Location
 from delivery.common.order import Order, OrderLine
-from delivery.common.order_states import(NewState, AssignedState, PickedUpState, DeliveredState, CancelledState)
+from delivery.common.order_states import (NewState, AssignedState, PickedUpState,
+                                          DeliveredState, CancelledState)
 from delivery.common.people import MenuItem
 
 
 class OrderRepository:
     """
-    Store orders, their items and their event history using SQLite.
+    REPOSITORY pattern - orders, their items and their event history in SQLite.
 
     Every method uses the connection it was given and never commits:
     the caller's transaction decides when the changes become permanent.
+    Each saved change also adds one row to order_events (the history).
     """
 
     def __init__(self, connection):
         self.connection = connection
 
     def add(self, order):
+        """
+        Save a NEW order with its items and a 'created' event.
+        SQLite chooses the order's ID; it is written back to order.id.
+        """
         if order.state_name != "NEW" or order.courier is not None:
             raise ValidationError(
                 f"Cannot save order '{order.id}': "
@@ -29,7 +35,7 @@ class OrderRepository:
         if not order.lines:
             raise ValidationError(
                 f"Cannot save order '{order.id}': "
-                "an order must be at least one item."
+                "an order must have at least one item."
             )
 
         try:
@@ -71,7 +77,14 @@ class OrderRepository:
         order.id = order_id
         return order
 
-    def save_transition(self,order,previous_state):
+    def save_transition(self, order, previous_state):
+        """
+        Save the order's new state and courier, plus the matching event.
+
+        previous_state -- the state the order had before the change. The
+        UPDATE only matches if the database still has that state, so a
+        change made in the meantime (e.g. by another app) is not overwritten.
+        """
         transition = {
             ("NEW", "ASSIGNED"): "assigned",
             ("NEW", "CANCELLED"): "cancelled",
@@ -108,7 +121,9 @@ class OrderRepository:
             )
 
             if result.rowcount == 0:
-                row = self.connection.execute("SELECT id FROM orders WHERE id = ?",
+                # Nothing matched: either the order is gone, or its saved
+                # state is no longer previous_state.
+                row =self.connection.execute("SELECT id FROM orders WHERE id = ?",
                                                (order.id,)).fetchone()
                 if row is None:
                     raise NotFoundError(f"No order with id {order.id}.")
@@ -204,7 +219,7 @@ class OrderRepository:
 
     @staticmethod
     def _to_cents(value):
-        """Convert a Decimal to an integer number of cents."""
+        """Convert money (e.g. 3.5) to whole cents (350), refusing fractions of a cent."""
         try:
             amount = Decimal(str(value))
         except InvalidOperation as error:
@@ -227,9 +242,20 @@ class OrderRepository:
         return int(cents)
 
 
-    # Function used for loading. It must not call assign(), pick_up(), etc...
-    # Those are used for new business actions
+    # ----- restoring saved orders ----------------------------------------
+
     def load_all(self, customers, restaurants, couriers):
+        """
+        Rebuild every saved order (oldest first) as {id: Order}.
+
+        customers, restaurants, couriers -- the objects already loaded, by ID.
+        Orders are linked to these same objects, and each busy courier gets
+        its order back.
+
+        This must NOT call assign(), pick_up(), etc. Those are new actions:
+        they would check the state rules and record events again. Instead
+        the saved state and courier are put back directly, silently.
+        """
         self._check_couriers_are_fresh(couriers)
         rows = self._read_order_rows()
 
@@ -244,9 +270,9 @@ class OrderRepository:
         return orders
 
 
-    #Helper functions 
     @staticmethod
     def _check_couriers_are_fresh(couriers):
+        """Refuse couriers that already carry an order (they would be linked twice)."""
         for courier in couriers.values():
             if courier.current_order is not None:
                 raise ValidationError(
@@ -254,6 +280,7 @@ class OrderRepository:
                 )
 
     def _read_order_rows(self):
+        """Every row of the orders table, oldest first."""
         return self.connection.execute(
         """
         SELECT id, customer_id, restaurant_id, courier_id,
@@ -302,6 +329,11 @@ class OrderRepository:
 
     
     def _build_saved_order(self, row, customers, restaurants):
+        """
+        Create the Order object for one row, still in state NEW.
+        It keeps its saved address, fee and item prices, even if the
+        customer moved or the menu prices changed since.
+        """
         customer = customers.get(row["customer_id"])
         restaurant = restaurants.get(row["restaurant_id"])
 
@@ -324,8 +356,10 @@ class OrderRepository:
             delivery_location=destination,
             delivery_fee=row["delivery_fee_cents"] / 100.0,
         )
+
     @staticmethod
     def _restore_state(order, state_name):
+        """Put the saved state object back, with no state check and no event."""
         state_classes = {
             "NEW": NewState,
             "ASSIGNED": AssignedState,
@@ -345,6 +379,11 @@ class OrderRepository:
 
     @staticmethod
     def _restore_courier(order, courier_id, couriers):
+        """
+        Link the saved courier to the order. If the order is still active
+        (ASSIGNED or PICKED_UP) the courier becomes busy with it again.
+        Rows that break the courier rules are refused.
+        """
         courier = None
 
         if courier_id is not None:

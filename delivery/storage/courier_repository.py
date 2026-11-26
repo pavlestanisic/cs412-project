@@ -1,3 +1,10 @@
+"""
+REPOSITORY pattern - couriers in SQLite (works inside the caller's transaction).
+
+Only a courier's details and position are stored. Whether a courier is busy
+is not a column: it follows from the orders table (see OrderRepository).
+"""
+
 import sqlite3
 
 from delivery.common.couriers import CourierCreator
@@ -72,7 +79,7 @@ class CourierRepository:
         return couriers
 
     def update(self, courier):
-        """Update a courier's information in the database."""
+        """Save a courier's name, vehicle and position (e.g. after a delivery)."""
         try:
             result = self.connection.execute(
                 """

@@ -1,3 +1,10 @@
+"""
+UNIT OF WORK - one change, saved completely or not at all.
+
+Services wrap each change in `with transactions.transaction() as connection:`
+and pass that connection to the repositories. The repositories never commit.
+"""
+
 from contextlib import contextmanager
 
 

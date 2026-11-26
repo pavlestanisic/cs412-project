@@ -5,15 +5,16 @@ An Order needs many parts (customer, restaurant, several items, delivery
 option, note). Passing all of that into one constructor is hard to read.
 A builder lets us write:
 
-    order = (OrderBuilder(1)
-             .for_customer(ana)
+    order = (OrderBuilder(None)      # None: SQLite gives the ID when saving
+             .for_customer(tara)
              .from_restaurant(pizza_place)
              .add_item("Pizza", 2)
              .with_delivery("express")
              .build())
 
 `build()` checks that everything needed was given before creating the object.
-Each `with_...`/`add_...` method returns `self` so calls can be chained.
+Every step method (`for_...`, `from_...`, `add_...`, `with_...`) returns
+`self` so calls can be chained.
 """
 
 from delivery.common.delivery_options import StandardDeliveryFactory, get_delivery_factory

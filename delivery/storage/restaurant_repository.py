@@ -1,3 +1,8 @@
+"""
+REPOSITORY pattern - restaurants and their menus in SQLite
+(works inside the caller's transaction). Prices are stored as whole cents.
+"""
+
 import sqlite3
 from decimal import Decimal, InvalidOperation
 
@@ -5,12 +10,12 @@ from delivery.common.errors import NotFoundError, ValidationError
 from delivery.common.location import Location
 from delivery.common.people import MenuItem, Restaurant
 
+
 class RestaurantRepository:
     """Store restaurants and their menus using SQLite."""
 
     def __init__(self, connection):
         self.connection = connection
-
 
     def add(self, restaurant):
         """Save a restaurant and its menu together."""

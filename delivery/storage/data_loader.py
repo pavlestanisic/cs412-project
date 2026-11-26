@@ -1,3 +1,10 @@
+"""
+RESTORATION - turning the saved rows back into connected Python objects.
+
+Runs at startup and after a failed change. Loading only rebuilds objects;
+it never announces events, so observers do not hear old news again.
+"""
+
 from delivery.storage.customer_repository import CustomerRepository
 from delivery.storage.restaurant_repository import RestaurantRepository
 from delivery.storage.courier_repository import CourierRepository
@@ -39,6 +46,12 @@ class DataLoader:
         self.connection = connection
 
     def load(self):
+        """
+        Load everything and return a LoadedData.
+
+        Customers, restaurants and couriers come first, because each order
+        is linked to the very same objects (not to copies of them).
+        """
         customer_repository = CustomerRepository(self.connection)
         restaurant_repository = RestaurantRepository(self.connection)
         courier_repository = CourierRepository(self.connection)

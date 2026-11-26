@@ -3,7 +3,7 @@ Logging setup for the whole app.
 
 We use Python's built-in `logging` module (no external package).
 Every module gets its own logger with `get_logger(__name__)`,
-and `setup_logging()` is called ONCE at program start (in main.py).
+and `setup_logging()` is called ONCE at program start (in core/entrypoint.py).
 """
 
 import logging

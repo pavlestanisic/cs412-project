@@ -66,15 +66,16 @@ The program loads these records at startup. IDs and dish names are case-sensitiv
 
 | Customer ID | Name |
 | --- | --- |
-| `C1` | Ana |
-| `C2` | Petar |
-| `C3` | Maja |
-| `C4` | Luka |
+| `C1` | Tara |
+| `C2` | Alice |
+| `C3` | Xhoi |
+| `C4` | Dusan |
 
 | Restaurant ID | Name | Available dishes and prices |
 | --- | --- | --- |
 | `R1` | Pizza Place | Pizza: 8.50; Cola: 2.00; Salad: 6.00 |
 | `R2` | Sushi Bar | Sushi Roll: 12.00; Miso Soup: 4.00 |
+| `R3` | Hamburger Joint | Hamburger: 10.00; Fries: 3.00 |
 
 | Courier ID | Name | Transport |
 | --- | --- | --- |
@@ -87,7 +88,8 @@ sample records are defined in `delivery/producer/sample_data.py`.
 
 ## Walkthrough: place and deliver an order
 
-Start a fresh session with `python3 main.py --menu`, then follow these steps:
+Delete `data/delivery.db` (if it exists) so the numbering starts at #1, start
+`python3 main.py --menu`, then follow these steps:
 
 | Step | Prompt or action | Enter |
 | --- | --- | --- |
@@ -105,9 +107,9 @@ Start a fresh session with `python3 main.py --menu`, then follow these steps:
 | 12 | Choose an action: inspect couriers | `8` |
 | 13 | Choose an action: quit | `0` |
 
-This creates order #1 for Ana with a total of **23.00**. In a fresh session using
-nearest assignment, **Marko (K1)** receives it. After delivery, he becomes available
-again and his delivery count increases to 1.
+This creates order #1 for Tara with a total of **22.00** (food 19.00 + delivery 3.00).
+With nearest assignment, **Marko (K1)** receives it. After delivery, he becomes
+available again and his delivery count increases to 1.
 
 Item input uses commas to separate dishes and `*` for quantity:
 

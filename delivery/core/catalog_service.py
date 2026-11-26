@@ -1,9 +1,10 @@
 """
 SERVICE LAYER - registering customers, restaurants and couriers.
 
-Services are the "use cases" of the app. The presentation layer calls them
-with plain values (ids, names, numbers). Services turn those values into
-domain objects (using builders and factories) and store them in repositories.
+Services are the "use cases" of the app. The console and the web page call
+them with plain values (ids, names, numbers). Services turn those values into
+domain objects (using builders and factories) and save them in SQLite through
+the repositories, one transaction per change.
 """
 
 import logging

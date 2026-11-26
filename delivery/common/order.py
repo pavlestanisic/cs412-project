@@ -2,11 +2,13 @@
 The Order - the heart of the app.
 
 An Order is:
-  * a SUBJECT (Observer pattern): it tells observers about every change.
+  * a SUBJECT (Observer pattern): it records every change as an event, and
+    OrderService announces those events to the observers once they are saved.
   * a CONTEXT (State pattern): it keeps a state object and forwards the
     actions assign / pick_up / deliver / cancel to it.
 
-Create orders with `OrderBuilder` (see builders.py), not directly.
+Create new orders with `OrderBuilder` (see builders.py), not directly. Only
+OrderRepository.load_all calls the constructor itself, to rebuild saved orders.
 """
 
 import logging
@@ -24,7 +26,8 @@ class OrderLine:
     """One row of an order: a menu item and how many of it."""
 
     def __init__(self, item, quantity):
-        self.item = MenuItem(item.name, item.price)  
+        # A copy: the order keeps the price it was placed at.
+        self.item = MenuItem(item.name, item.price)
         self.quantity = quantity
 
     def total(self):
@@ -40,7 +43,8 @@ class Order(Subject):
 
     def __init__(self, order_id, customer, restaurant, lines, delivery_factory, note="",
                 delivery_location=None, delivery_fee=None):
-        
+        # delivery_location and delivery_fee are given only when restoring a
+        # saved order, so it keeps the address and fee it was placed with.
         super().__init__()  # sets up the observer list (from Subject)
         self.id = order_id
         self.customer = customer
@@ -64,7 +68,7 @@ class Order(Subject):
 
         self._delivery_fee = delivery_fee
 
-        self._state = NewState()  # every order starts as NEW
+        self._state = NewState()  # every order starts as NEW (load_all may restore another)
         self._courier = None
 
         # Events that happened but were not announced yet. OrderService
@@ -138,10 +142,10 @@ class Order(Subject):
         """Cancel the order (only allowed when NEW or ASSIGNED)."""
         self._state.cancel(self)
 
-    # ----- helpers that ONLY state objects should call --------------------
+    # ----- helpers for state objects (and for restoring saved orders) -----
 
     def set_courier(self, courier):
-        """Remember which courier carries this order."""
+        """Remember which courier carries this order (no event)."""
         self._courier = courier
 
     def change_state(self, new_state, event):
@@ -153,6 +157,9 @@ class Order(Subject):
         self.record_event(event)
 
     # ----- events waiting for the save ------------------------------------
+    # change_state records state events; OrderService records "created" and
+    # later takes the events: to announce them after a commit, or to drop
+    # them after a rollback.
 
     def record_event(self, event):
         """Remember that `event` happened; it is announced after saving."""

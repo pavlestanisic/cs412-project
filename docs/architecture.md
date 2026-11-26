@@ -89,8 +89,9 @@ throughout the domain model.
 
 `main.py` and `python3 -m delivery` both call `core.entrypoint.main()`. Startup
 parses arguments through `common.config`, configures logging, constructs an
-AppContext, loads the sample city, and runs either the scripted demo or menu.
-There are no pre-existing orders on startup. Every new process starts fresh.
+AppContext (which restores everything saved), adds any missing sample records,
+and runs the scripted demo, the menu or the web page. The demo always uses a
+fresh in-memory database; the menu and web page continue from `data/delivery.db`.
 
 | Responsibility | Owner |
 | --- | --- |

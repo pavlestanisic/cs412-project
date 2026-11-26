@@ -1,5 +1,6 @@
 """
-Observers hear about a change only after it is saved, exactly once.
+Observers hear about a change only after it is saved, and only once
+(never again after a restart).
 
 Sample city: customer C1 Tara, restaurant R1 Pizza Place,
 nearest courier to R1 is K1 Marko (bike).

@@ -1,4 +1,4 @@
-"""Configure logging, assemble the application, and run the console."""
+"""Configure logging, build the app, then run the demo, the menu or the web page."""
 
 import os
 

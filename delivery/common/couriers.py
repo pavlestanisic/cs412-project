@@ -1,3 +1,10 @@
+"""
+Couriers (bike, car, walking) and the FACTORY METHOD that hires them.
+
+A courier carries at most one order at a time. While carrying it, the
+courier and the order point at each other (courier.current_order and
+order.courier).
+"""
 
 import logging
 from abc import ABC, abstractmethod
@@ -21,7 +28,9 @@ class Courier(ABC):
         self.name = name
         self.location = location
         self._current_order = None  # None means the courier is free
-        self.delivered_count = 0    # how many orders this courier delivered
+        # How many orders this courier delivered. Not saved as a column:
+        # CourierRepository counts it from DELIVERED orders when loading.
+        self.delivered_count = 0
 
     @abstractmethod
     def speed(self):

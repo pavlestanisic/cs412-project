@@ -38,7 +38,7 @@ class Subject:
         self._observers = []  # list of Observer objects
 
     # OrderService attaches the application's shared notifier instances to each
-    # new order. Each order maintains its own list of subscriptions.
+    # new and restored order. Each order keeps its own list of subscriptions.
     def attach(self, observer):
         """Start sending events to `observer` (added only once)."""
         if observer not in self._observers:

@@ -8,7 +8,10 @@ skipped, so a restored app is never filled twice.
 from delivery.common.errors import NotFoundError
 
 def load_sample_data(app):
-    """Fill the app with a small fixed city so the demo always looks the same."""
+    """
+    Add the small fixed city (3 restaurants, 4 customers, 3 couriers) that is
+    not saved yet, and return the app. The demo depends on these exact IDs.
+    """
     catalog = app.catalog
 
     sample_restaurants = [
@@ -43,8 +46,8 @@ def load_sample_data(app):
         )
 
     sample_customers = [
-        ("C1", "Tara", 1, 1),  
-        ("C2", "Alice", 5, 5),    
+        ("C1", "Tara", 1, 1),
+        ("C2", "Alice", 5, 5),
         ("C3", "Xhoi", 9, 9),
         ("C4", "Dusan", 9, 9),
     ]

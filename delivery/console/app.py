@@ -7,8 +7,10 @@ This layer only:
   * prints the result.
 
 It contains NO business rules. All rules live in the service/domain layers.
+The web page (web/server.py) is the second front end over the same services.
 
-`output` and `input_func` are passed in (default: print / input).
+`output` and `input_func` are passed in (default: print / input), so the
+tests can drive the screen without a keyboard.
 """
 
 from delivery.common.errors import DispatchError
@@ -119,7 +121,7 @@ class ConsoleApp:
         self._title("A courier is free again - dispatch the waiting order")
         self.dispatch_waiting()
 
-        self._title("Maja cancels order #3")
+        self._title("Xhoi cancels order #3")
         self._try(service.cancel, 3)
 
         self._title("Trying to deliver order #2 before pick up")

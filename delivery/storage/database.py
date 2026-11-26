@@ -1,3 +1,10 @@
+"""
+Opening the SQLite database and creating its tables.
+
+Run this file directly (python -m delivery.storage.database) to create
+data/delivery.db without starting the app.
+"""
+
 import logging
 import sqlite3
 from pathlib import Path

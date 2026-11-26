@@ -2,8 +2,8 @@
 Wiring - creates every object of the app and connects the layers.
 
 This composition root owns the database connection, observers, dispatch
-policy and services. The console consumes the resulting context; common
-domain code stays independent.
+policy and services. The console and the web page use the resulting
+context; the domain code in `common` knows nothing about it.
 
 Startup = restoration: the saved customers, restaurants, couriers and orders
 are loaded once into one shared LoadedData. Services read those objects and
